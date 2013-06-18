@@ -88,12 +88,12 @@ sub edit :Chained('object_setup') :PathPart('edit') :Args(0) :FormConfig {
     if ($form->submitted_and_valid) {
         $form->model->update($object);
 
-        $c->response->redirect($c->uri_for($self->action_for('list'),
-            { mid => $c->set_status_msg("Successfully updated ".$fu->{display_name}) }));
+        $c->flash->{message} = "Successfully updated ".$fu->{display_name};
+        $c->response->redirect($c->uri_for($self->action_for('list')));
         $c->detach();
     } else {
-        $c->forward('form_setup');
         $form->model->default_values($object);
+        $c->forward('call_subaction',['form_setup', $form]);
     }
     $c->stash->{template} = $fu->{template_path}.'/edit.tt';
 }
@@ -104,17 +104,27 @@ sub create :Chained('base') :PathPart('create') :Args(0) :FormConfig {
     my $form = $c->stash->{form};
     my $fu = $c->stash->{fu};
 
-    if ($form->submitted_and_valid) {
-        my $obj = $fu->{class}->new_result($fu->{defaults} || {});
-        $form->model->update($obj);
+    if ($form->submitted) {
+        if ($form->valid) {
+            my $obj = $fu->{class}->new_result($c->forward('call_subaction',['defaults', $form]) || {});
+            my $params = $c->forward('call_subaction',['process_form', $form]);
+            $params = $form->params unless $params;
+            delete $params->{$form->indicator};
+            $obj->$_($params->{$_}) foreach keys %$params;
+            $obj->insert;
 
-        $c->response->redirect($c->uri_for($self->action_for('list'), 
-            {mid => $c->set_status_msg("New ".$fu->{display_name}." created")}));
-        $c->detach();
-    } else {
-        $c->forward('form_setup');
+            $c->flash->{message} = "New ".$fu->{display_name}." created";
+            $c->response->redirect($c->uri_for($self->action_for('list'))) ;
+            $c->detach();
+        }
     }
+    $c->forward('call_subaction',['form_setup', $form]);
     $c->stash->{template} = $fu->{template_path}.'/create.tt';
+}
+
+sub create_defaults :Private {
+    my ($self, $c, $form) = @_;
+    return {};
 }
 
 sub delete :Chained('object_setup') :PathPart('delete') :Args(0) {
@@ -130,8 +140,9 @@ sub object_setup :Chained('base') :PathPart('') :CaptureArgs(1) {
     my ($object) = $fu->{search}->search({ $fu->{pkey} => $id })->first;
 
     unless ($object) {
-        $c->response->redirect($c->uri_for($self->action_for('list'),
-            { mid => $c->set_status_msg($fu->{display_name}." does not exist or you do not have permissions for it.")}));
+
+        $c->flash->{error} = $fu->{name}." does not exist or you do not have permissions for it.";
+        $c->response->redirect($c->uri_for($self->action_for('list')));
         $c->detach;
     }
 
@@ -176,6 +187,16 @@ sub index :Path {
     my ($self, $c) = @_;
     $c->response->redirect($c->uri_for($self->action_for('list')));
     $c->detach;
+}
+
+sub call_subaction :Private {
+    my ($self, $c, $name, $form) = @_;
+    my $action = $c->get_action($c->action->name."_$name",$c->namespace);
+    if ($action) {
+        return $c->forward($action, [$form]);
+    } else {
+        return wantarray ? () : undef;
+    }
 }
 
 =head1 AUTHOR
