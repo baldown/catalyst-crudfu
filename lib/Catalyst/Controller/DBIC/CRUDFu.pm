@@ -129,7 +129,17 @@ sub create_defaults :Private {
 
 sub delete :Chained('object_setup') :PathPart('delete') :Args(0) {
     my ($self, $c) = @_;
+    
+    my $object = $c->stash->{object};
+    my $fu = $c->stash->{fu};
 
+    if ($c->req->param('confirm')) {
+        $c->flash->{message} = "Successfully deleted ".$fu->{display_name}.".";
+        $object->delete;
+        $c->response->redirect($c->uri_for($self->action_for('list'))) ;
+        $c->detach();
+    }
+    $c->stash->{template} = $fu->{template_path}.'/delete.tt';
 }
 
 sub object_setup :Chained('base') :PathPart('') :CaptureArgs(1) {
@@ -145,6 +155,9 @@ sub object_setup :Chained('base') :PathPart('') :CaptureArgs(1) {
         $c->response->redirect($c->uri_for($self->action_for('list')));
         $c->detach;
     }
+    
+    my $column = $fu->{identifying_field};
+    $fu->{identity} = $object->$column;
 
     $c->stash->{object} = $object;
 }
@@ -164,6 +177,7 @@ sub build_fu :Private {
         $params{display_name} ||= lc($name);
     }
     $params{pkey} ||= 'id';
+    $params{identifying_field} ||= $params{pkey};
     $params{search} = $params{class}->search() unless $params{search};
     unless ($params{template_path}) {
         if ($params{templates} && $params{templates} eq 'custom') {
