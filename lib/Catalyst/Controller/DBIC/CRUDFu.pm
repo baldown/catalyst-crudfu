@@ -86,7 +86,9 @@ sub edit :Chained('object_setup') :PathPart('edit') :Args(0) :FormConfig {
     my $object = $c->stash->{object};
 
     if ($form->submitted_and_valid) {
-        $form->model->update($object);
+        my $params = $c->forward('call_subaction',['process_form', $form]) || $form->params;
+        delete $params->{$form->indicator};
+        $object->update($params);
 
         $c->flash->{message} = "Successfully updated ".$fu->{display_name};
         $c->response->redirect($c->uri_for($self->action_for('list')));
@@ -107,8 +109,7 @@ sub create :Chained('base') :PathPart('create') :Args(0) :FormConfig {
     if ($form->submitted) {
         if ($form->valid) {
             my $obj = $fu->{class}->new_result($c->forward('call_subaction',['defaults', $form]) || {});
-            my $params = $c->forward('call_subaction',['process_form', $form]);
-            $params = $form->params unless $params;
+            my $params = $c->forward('call_subaction',['process_form', $form]) || $form->params;
             delete $params->{$form->indicator};
             $obj->$_($params->{$_}) foreach keys %$params;
             $obj->insert;
