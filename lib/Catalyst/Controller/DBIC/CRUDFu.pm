@@ -67,7 +67,7 @@ sub list :Chained('base') :Args(0) :PathPart('list') {
             } elsif ($column eq '_delete') {
                 $tabletext .= sprintf('<td><a href="%d/delete">Delete</a></td>',$row->$pkey);
             } else {
-                $tabletext .= sprintf('<td>%s</td>',$row->$column);
+                $tabletext .= sprintf('<td>%s</td>',$row->$column || '');
             }
         }
         $tabletext .= "</tr>\n";
@@ -88,9 +88,12 @@ sub edit :Chained('object_setup') :PathPart('edit') :Args(0) :FormConfig {
     if ($form->submitted_and_valid) {
         my $params = $c->forward('call_subaction',['process_form', $form]) || $form->params;
         delete $params->{$form->indicator};
+        delete $params->{$_} foreach @{$fu->{ignores} || []};
         $object->update($params);
+        
+        $c->forward('call_subaction',['object_updated', $form]);
 
-        $c->flash->{message} = "Successfully updated ".$fu->{display_name};
+        $c->flash->{message} ||= "Successfully updated ".$fu->{display_name};
         $c->response->redirect($c->uri_for($self->action_for('list')));
         $c->detach();
     } else {
@@ -108,24 +111,23 @@ sub create :Chained('base') :PathPart('create') :Args(0) :FormConfig {
 
     if ($form->submitted) {
         if ($form->valid) {
-            my $obj = $fu->{class}->new_result($c->forward('call_subaction',['defaults', $form]) || {});
+            my $obj = $fu->{class}->new_result($c->forward('call_subaction',['defaults', $form]) || $fu->{global_defaults} || {});
             my $params = $c->forward('call_subaction',['process_form', $form]) || $form->params;
             delete $params->{$form->indicator};
+            delete $params->{$_} foreach @{$fu->{ignores} || []};
             $obj->$_($params->{$_}) foreach keys %$params;
             $obj->insert;
+            $c->stash->{object} = $obj;
+            
+            $c->forward('call_subaction',['object_updated', $form]);
 
-            $c->flash->{message} = "New ".$fu->{display_name}." created";
+            $c->flash->{message} ||= "New ".$fu->{display_name}." created";
             $c->response->redirect($c->uri_for($self->action_for('list'))) ;
             $c->detach();
         }
     }
     $c->forward('call_subaction',['form_setup', $form]);
     $c->stash->{template} = $fu->{template_path}.'/create.tt';
-}
-
-sub create_defaults :Private {
-    my ($self, $c, $form) = @_;
-    return {};
 }
 
 sub delete :Chained('object_setup') :PathPart('delete') :Args(0) {
@@ -163,12 +165,6 @@ sub object_setup :Chained('base') :PathPart('') :CaptureArgs(1) {
     $c->stash->{object} = $object;
 }
 
-sub form_setup :Private {
-    my ($self, $c, $id) = @_;
-    my $form = $c->stash->{form};
-    my $fu = $c->stash->{fu};
-}
-
 sub build_fu :Private {
     my ($self, $c, %params) = @_;
     if ($params{name}) {
@@ -179,7 +175,7 @@ sub build_fu :Private {
     }
     $params{pkey} ||= 'id';
     $params{identifying_field} ||= $params{pkey};
-    $params{search} = $params{class}->search() unless $params{search};
+    $params{search} = $params{class}->search($params{global_defaults} || {}) unless $params{search};
     unless ($params{template_path}) {
         if ($params{templates} && $params{templates} eq 'custom') {
             my $listpath = $self->action_for('list');
@@ -206,12 +202,12 @@ sub index :Path {
 
 sub call_subaction :Private {
     my ($self, $c, $name, $form) = @_;
-    my $action = $c->get_action($c->action->name."_$name",$c->namespace);
-    if ($action) {
+    foreach my $sub ($c->action->name."_$name", $name) {
+        my $action = $c->get_action($sub,$c->namespace);
+        next unless $action;
         return $c->forward($action, [$form]);
-    } else {
-        return wantarray ? () : undef;
     }
+    return wantarray ? () : undef;
 }
 
 =head1 AUTHOR
