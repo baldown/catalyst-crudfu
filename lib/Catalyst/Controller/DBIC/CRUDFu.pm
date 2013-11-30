@@ -41,6 +41,18 @@ if you don't export anything, such as for a purely object-oriented module.
 
 =cut
 
+sub list_redirect :Private {
+    my ($self, $c) = @_;
+    my $path = $c->req->uri;
+    my $action = $c->action->name;
+    $path =~ s/\?.*$//;
+    $path =~ s/$action$//;
+    $path =~ s|/\d+/$|/|;
+    $path .= 'list';
+    $c->response->redirect($path);
+    $c->detach;
+}
+
 sub list :Chained('base') :Args(0) :PathPart('list') {
     my ($self, $c) = @_;
 
@@ -62,12 +74,14 @@ sub list :Chained('base') :Args(0) :PathPart('list') {
     foreach my $row ($fu->{search}->all()) {
         $tabletext .= '<tr>';
         foreach my $column (@{$fu->{list}->{columns}}) {
-            if ($column eq '_edit') {
-                $tabletext .= sprintf('<td><a href="%d/edit">Edit</a></td>',$row->$pkey);
-            } elsif ($column eq '_delete') {
-                $tabletext .= sprintf('<td><a href="%d/delete">Delete</a></td>',$row->$pkey);
+            if (ref($column) eq 'ARRAY') {
+                my ($actionpath, $title) = @$column;
+                $tabletext .= sprintf('<td><a title="%s" href="%d/%s">%s</a></td>',ucfirst($actionpath), $row->$pkey, $actionpath, $title);
+            } elsif ($column =~ /^_(.*)$/) {
+                my $action = $1;
+                $tabletext .= sprintf('<td><a href="%d/%s">%s</a></td>',$row->$pkey, $action, ucfirst($action));
             } else {
-                $tabletext .= sprintf('<td>%s</td>',$row->$column || '');
+                $tabletext .= sprintf('<td>%s</td>',$row->$column // '');
             }
         }
         $tabletext .= "</tr>\n";
@@ -75,7 +89,7 @@ sub list :Chained('base') :Args(0) :PathPart('list') {
     $tabletext .= '</table>';
     $c->stash->{table} = $tabletext;
 
-    $c->stash->{template} = $fu->{template_path}.'/list.tt';
+    $c->stash->{template} ||= $fu->{template_path}.'/list.tt';
 }
 
 sub edit :Chained('object_setup') :PathPart('edit') :Args(0) :FormConfig {
@@ -94,13 +108,12 @@ sub edit :Chained('object_setup') :PathPart('edit') :Args(0) :FormConfig {
         $c->forward('call_subaction',['object_updated', $form]);
 
         $c->flash->{message} ||= "Successfully updated ".$fu->{display_name};
-        $c->response->redirect($c->uri_for($self->action_for('list')));
-        $c->detach();
+        $c->forward('list_redirect');
     } else {
         $form->model->default_values($object);
         $c->forward('call_subaction',['form_setup', $form]);
     }
-    $c->stash->{template} = $fu->{template_path}.'/edit.tt';
+    $c->stash->{template} ||= $fu->{template_path}.'/edit.tt';
 }
 
 sub create :Chained('base') :PathPart('create') :Args(0) :FormConfig {
@@ -122,12 +135,11 @@ sub create :Chained('base') :PathPart('create') :Args(0) :FormConfig {
             $c->forward('call_subaction',['object_updated', $form]);
 
             $c->flash->{message} ||= "New ".$fu->{display_name}." created";
-            $c->response->redirect($c->uri_for($self->action_for('list'))) ;
-            $c->detach();
+            $c->forward('list_redirect');
         }
     }
     $c->forward('call_subaction',['form_setup', $form]);
-    $c->stash->{template} = $fu->{template_path}.'/create.tt';
+    $c->stash->{template} ||= $fu->{template_path}.'/create.tt';
 }
 
 sub delete :Chained('object_setup') :PathPart('delete') :Args(0) {
@@ -139,10 +151,9 @@ sub delete :Chained('object_setup') :PathPart('delete') :Args(0) {
     if ($c->req->param('confirm')) {
         $c->flash->{message} = "Successfully deleted ".$fu->{display_name}.".";
         $object->delete;
-        $c->response->redirect($c->uri_for($self->action_for('list'))) ;
-        $c->detach();
+        $c->forward('list_redirect');
     }
-    $c->stash->{template} = $fu->{template_path}.'/delete.tt';
+    $c->stash->{template} ||= $fu->{template_path}.'/delete.tt';
 }
 
 sub object_setup :Chained('base') :PathPart('') :CaptureArgs(1) {
@@ -155,8 +166,7 @@ sub object_setup :Chained('base') :PathPart('') :CaptureArgs(1) {
     unless ($object) {
 
         $c->flash->{error} = $fu->{name}." does not exist or you do not have permissions for it.";
-        $c->response->redirect($c->uri_for($self->action_for('list')));
-        $c->detach;
+        $c->forward('list_redirect');
     }
     
     my $column = $fu->{identifying_field};
@@ -194,9 +204,11 @@ sub base :Chained('/') :PathPart('objectfu') :CaptureArgs(0) {
 
 }
 
-sub index :Path {
+sub index :Chained('base') :Args(0) :PathPart('') {
     my ($self, $c) = @_;
-    $c->response->redirect($c->uri_for($self->action_for('list')));
+    my $curpath = $c->req->uri;
+    $curpath =~ s/\/$//;
+    $c->response->redirect("$curpath/list");
     $c->detach;
 }
 
