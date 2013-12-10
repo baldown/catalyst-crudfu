@@ -103,6 +103,12 @@ sub edit :Chained('object_setup') :PathPart('edit') :Args(0) :FormConfig {
         my $params = $c->forward('call_subaction',['process_form', $form]) || $form->params;
         delete $params->{$form->indicator};
         delete $params->{$_} foreach @{$fu->{ignores} || []};
+        foreach my $param (keys %$params) {
+            my $element = $form->get_element({ name => $param });
+            next unless $element->type eq 'Checkbox';
+            next if $params->{$param};
+            $params->{$param} = 0;
+        }
         $object->update($params);
         
         $c->forward('call_subaction',['object_updated', $form]);
