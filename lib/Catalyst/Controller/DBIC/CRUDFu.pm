@@ -63,25 +63,30 @@ sub list :Chained('base') :Args(0) :PathPart('list') {
     my %attributes = %{$fu->{list}->{attributes} || {}};
     $tabletext .= sprintf(' %s="%s"',$_,$attributes{$_}) foreach keys %attributes;
     $tabletext .= ">\n";
+    $fu->{list}->{column_class} //= [];
     if ($fu->{list}->{headers}) {
         $tabletext .= '<tr>';
         for (my $i = 0; $i < scalar(@{$fu->{list}->{columns}}); $i++) {
-            $tabletext .= sprintf('<th>%s</th>',$fu->{list}->{headers}->[$i] || '&nbsp;');
+            my $class = $fu->{list}->{column_class}->[$i] ? sprintf(' class="%s"', $fu->{list}->{column_class}->[$i]) : '';
+            $tabletext .= sprintf('<th%s>%s</th>', $class, $fu->{list}->{headers}->[$i] || '&nbsp;');
         }
         $tabletext .= "</tr>\n";
     }
     my $pkey = $fu->{pkey};
     foreach my $row ($fu->{search}->all()) {
         $tabletext .= '<tr>';
-        foreach my $column (@{$fu->{list}->{columns}}) {
+        #foreach my $column (@{$fu->{list}->{columns}}) {
+        for (my $i = 0; $i < scalar(@{$fu->{list}->{columns}}); $i++) {    
+            my $column = $fu->{list}->{columns}->[$i];
+            my $class = $fu->{list}->{column_class}->[$i] ? sprintf(' class="%s"', $fu->{list}->{column_class}->[$i]) : '';
             if (ref($column) eq 'ARRAY') {
                 my ($actionpath, $title) = @$column;
-                $tabletext .= sprintf('<td><a title="%s" href="%d/%s">%s</a></td>',ucfirst($actionpath), $row->$pkey, $actionpath, $title);
+                $tabletext .= sprintf('<td%s><a title="%s" href="%d/%s">%s</a></td>',$class,ucfirst($actionpath), $row->$pkey, $actionpath, $title);
             } elsif ($column =~ /^_(.*)$/) {
                 my $action = $1;
-                $tabletext .= sprintf('<td><a href="%d/%s">%s</a></td>',$row->$pkey, $action, ucfirst($action));
+                $tabletext .= sprintf('<td%s><a href="%d/%s">%s</a></td>', $class, $row->$pkey, $action, ucfirst($action));
             } else {
-                $tabletext .= sprintf('<td>%s</td>',$row->$column // '');
+                $tabletext .= sprintf('<td%s>%s</td>', $class, $row->$column // '');
             }
         }
         $tabletext .= "</tr>\n";
@@ -105,6 +110,7 @@ sub edit :Chained('object_setup') :PathPart('edit') :Args(0) :FormConfig {
         delete $params->{$_} foreach @{$fu->{ignores} || []};
         foreach my $param (keys %$params) {
             my $element = $form->get_element({ name => $param });
+            next unless $element;
             next unless $element->type eq 'Checkbox';
             next if $params->{$param};
             $params->{$param} = 0;
