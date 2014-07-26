@@ -1,0 +1,11 @@
+[% title = 'Delete ' _ fu.identity _ '?' %]
+<p align="center">
+Are you sure you want to delete [% fu.identity ? 'the' : 'this' %] [% fu.display_name %] [% fu.identity %]?  This action is irreversible.
+</p>
+<form action="[% c.req.uri %]" method="post">
+  <p align="center">
+  <input type="hidden" name="confirm" value="1"/>
+  <input class="pure-button pure-button-primary" type="submit" name="submit" value="Delete"/>
+  </p>
+</form>
+

@@ -1,0 +1,7 @@
+[% title = title || fu.name _ "s" %]
+[% IF intro %]
+<p>[% intro %]</p>
+[% END %]
+
+[% table %]
+<!--<a href="create">Add New [% fu.name %]</a>-->

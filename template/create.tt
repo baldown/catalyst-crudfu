@@ -1,0 +1,7 @@
+[% DEFAULT action = 'Create' %]
+[% objtype = fu.name %]
+[% title = title || "$action $objtype" %]
+[% IF intro %]
+<p id='intro'>[% intro %]</p>
+[% END %]
+[% form %]
