@@ -111,9 +111,13 @@ sub edit :Chained('object_setup') :PathPart('edit') :Args(0) :FormConfig {
         foreach my $param (keys %$params) {
             my $element = $form->get_element({ name => $param });
             next unless $element;
-            next unless $element->type eq 'Checkbox';
-            next if $params->{$param};
-            $params->{$param} = 0;
+            if ($element->type eq 'Checkbox') {
+                next if $params->{$param};
+                $params->{$param} = 0;
+            } elsif ($element->type eq 'Text') {
+                next unless $params->{$param} eq '';
+                $params->{$param} = undef;
+            }
         }
         $object->update($params);
         
