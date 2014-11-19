@@ -201,11 +201,19 @@ sub build_fu :Private {
     }
     $params{pkey} ||= 'id';
     $params{identifying_field} ||= $params{pkey};
-    $params{search} = $params{class}->search($params{global_defaults} || {}) unless $params{search};
+    $params{search} = $params{class}->search(
+        ($params{global_defaults} || {}),
+        {
+            %{$params{search_attrs} || {}},
+            %{
+                $params{sort} 
+                || { order_by => { '-asc' => $params{pkey} } } 
+            },
+        }
+    ) unless $params{search};
     unless ($params{template_path}) {
         if ($params{templates} && $params{templates} eq 'custom') {
             my $listpath = $self->action_for('list');
-            warn $listpath;
             $listpath =~ s/list$//;
             $params{template_path} = $listpath;
         } else {
