@@ -177,7 +177,7 @@ sub object_setup :Chained('base') :PathPart('') :CaptureArgs(1) {
 
     my $fu = $c->stash->{fu};
 
-    my ($object) = $fu->{search}->search({ $fu->{pkey} => $id })->first;
+    my ($object) = $fu->{search}->search({ 'me.'.$fu->{pkey} => $id })->first;
 
     unless ($object) {
 
