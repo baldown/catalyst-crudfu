@@ -115,7 +115,7 @@ sub edit :Chained('object_setup') :PathPart('edit') :Args(0) :FormConfig {
                 next if $params->{$param};
                 $params->{$param} = 0;
             } elsif ($element->type eq 'Text') {
-                next unless $params->{$param} eq '';
+                next unless defined $params->{$param} && $params->{$param} eq '';
                 $params->{$param} = undef;
             }
         }
