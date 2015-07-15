@@ -6,6 +6,8 @@ use 5.006;
 use strict;
 use warnings FATAL => 'all';
 
+use File::ShareDir;
+
 BEGIN { extends 'Catalyst::Controller::HTML::FormFu'; }
 
 =head1 NAME
@@ -73,7 +75,17 @@ sub list :Chained('base') :Args(0) :PathPart('list') {
         $tabletext .= "</tr>\n";
     }
     my $pkey = $fu->{pkey};
-    foreach my $row ($fu->{search}->all()) {
+    
+    my $page = int($c->req->param('page') || 0);
+    my $per_page = 20;
+    my $rs = $fu->{search}->search({
+    
+    },{
+      rows => $per_page,
+      offset => $per_page * $page,
+    });
+    
+    foreach my $row ($rs->all()) {
         $tabletext .= '<tr>';
         #foreach my $column (@{$fu->{list}->{columns}}) {
         for (my $i = 0; $i < scalar(@{$fu->{list}->{columns}}); $i++) {    
