@@ -6,7 +6,8 @@ use 5.006;
 use strict;
 use warnings FATAL => 'all';
 
-use File::ShareDir;
+use Try::Tiny;
+use File::ShareDir qw(dist_dir);
 
 BEGIN { extends 'Catalyst::Controller::HTML::FormFu'; }
 
@@ -229,9 +230,19 @@ sub build_fu :Private {
             $listpath =~ s/list$//;
             $params{template_path} = $listpath;
         } else {
-            $params{template_path} = 'elements/fu/';
+            $params{template_path} = 'crudfu';
         }
     }
+    try {
+        $c->stash->{additional_template_paths} = [
+            dist_dir('Catalyst::Controller::DBIC::CRUDFu')
+        ];
+    }
+    catch {
+        $c->stash->{additional_template_paths} = [
+            '/oofle/perl-lib/share/dist/Catalyst-Controller-DBIC-CRUDFu'
+        ];
+    };
     $c->stash->{fu} = \%params;
 }
 
