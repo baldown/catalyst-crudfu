@@ -77,8 +77,10 @@ sub list :Chained('base') :Args(0) :PathPart('list') {
     }
     my $pkey = $fu->{pkey};
     
-    my $page = int($c->req->param('page') || 0);
+    $c->stash->{page_number} = int($c->req->param('page') || 1);
+    my $page = $c->stash->{page_number} - 1;
     my $per_page = 20;
+    $c->stash->{total_pages} = int($fu->{search}->count / $per_page) + 1;
     my $rs = $fu->{search}->search({
     
     },{

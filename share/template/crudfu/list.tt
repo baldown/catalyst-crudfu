@@ -4,4 +4,5 @@
 [% END %]
 
 [% table %]
+[% INCLUDE crudfu/pagination.tt %]
 <!--<a href="create">Add New [% fu.name %]</a>-->

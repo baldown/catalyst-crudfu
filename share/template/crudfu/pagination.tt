@@ -1,0 +1,16 @@
+<div class="pagination">
+[%-
+IF page_number > 1;
+    prev_page = page_number - 1;
+END;
+IF page_number < total_pages;
+    next_page = page_number + 1;
+END;
+IF prev_page;-%]
+<a href="[% c.req.uri.path %]?page=[% prev_page %]" title="Previous Page">&laquo; Prev</a>
+[%-
+END;
+IF next_page;-%]
+<a href="[% c.req.uri.path %]?page=[% next_page %]" title="Next Page">Next &raquo;</a>
+[%- END %]
+</div>
