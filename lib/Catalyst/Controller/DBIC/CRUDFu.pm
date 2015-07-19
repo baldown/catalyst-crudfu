@@ -235,16 +235,17 @@ sub build_fu :Private {
             $params{template_path} = 'crudfu';
         }
     }
+    my $dist_dir;
     try {
-        $c->stash->{additional_template_paths} = [
-            dist_dir('Catalyst::Controller::DBIC::CRUDFu')
-        ];
+        $dist_dir = dist_dir('Catalyst::Controller::DBIC::CRUDFu')
     }
     catch {
-        $c->stash->{additional_template_paths} = [
-            '/oofle/perl-lib/share/dist/Catalyst-Controller-DBIC-CRUDFu'
-        ];
+        $dist_dir = '/oofle/perl-lib/share/dist/Catalyst-Controller-DBIC-CRUDFu'
     };
+    push(
+        @{ $c->view('TT')->include_path }, 
+        $dist_dir
+    ) unless grep { $_ eq $dist_dir } $c->view('TT')->include_path;
     $c->stash->{fu} = \%params;
 }
 
