@@ -1,2 +1,2 @@
 [% DEFAULT title = 'Edit ' _ fu.identity %]
-[% INCLUDE "elements/fu/create.tt", action = 'Modify' %]
+[% INCLUDE "crudfu/create.tt", action = 'Modify' %]
