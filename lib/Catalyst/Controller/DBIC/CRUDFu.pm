@@ -219,11 +219,8 @@ sub build_fu :Private {
     $params{search} = $params{class}->search(
         ($params{global_defaults} || {}),
         {
+            order_by => ($params{sort} || { '-asc' => $params{pkey} }),
             %{$params{search_attrs} || {}},
-            %{
-                $params{sort} 
-                || { order_by => { '-asc' => $params{pkey} } } 
-            },
         }
     ) unless $params{search};
     unless ($params{template_path}) {
